@@ -36,57 +36,92 @@ class Gridworld:
 	def set_terminal_state(self, position):
 		self.terminal_positions.append(position)
 
+	def set_agent_position(self, position):
+		self.agent_position = position
+
 	def get_agent_pos(self):
 		return self.agent_position
 
 	def get_world_dim(self):
 		return np.shape(self.gridworld)
 
-	def get_possible_moves(self, position):
-		poss_moves = []
-		gridworld_dimension = np.shape(self.gridworld)
-
-		if(((position[0] + 1) in range(gridworld_dimension[0])) and (not(np.isnan(self.gridworld[position[0] + 1][position[1]])))):
-				move = (position[0] + 1, position[1])
-				poss_moves.append(move)
-
-		if(((position[0] - 1) in range(gridworld_dimension[0])) and (not(np.isnan(self.gridworld[position[0] - 1][position[1]])))):
-				move = (position[0] - 1, position[1])
-				poss_moves.append(move)
-
-		if(((position[1] + 1) in range(gridworld_dimension[1])) and (not(np.isnan(self.gridworld[position[0]][position[1] + 1])))):
-				move = (position[0], position[1] + 1)
-				poss_moves.append(move)
-				#poss_moves = np.append(poss_moves, self.gridworld[position[0]][position[1] + 1])
+	def get_all_non_wall_states(self):
+		all_possible_states = []
 		
-		if(((position[1] - 1) in range(gridworld_dimension[1])) and (not(np.isnan(self.gridworld[position[0]][position[1] - 1])))):
-				move = (position[0], position[1] - 1)
-				poss_moves.append(move)
+		world_dimension = self.get_world_dim()
+		world_height = world_dimension[0]
+		world_width = world_dimension[1]
+
+		for i in range(world_height):
+			for j in range(world_width):
+				if((i,j) not in self.wall_positions):
+					all_possible_states.append((i,j))
+
+		return all_possible_states
+
+	def get_possible_next_states(self, position):
+		possible_next_states = []
+
+		if((position in self.terminal_positions) or (position in self.wall_positions)):
+			possible_next_states.append(position)
+			return possible_next_states
+
+		gridworld_dimension = np.shape(self.gridworld)
+		gridworld_height = gridworld_dimension[0]
+		gridworld_width = gridworld_dimension[1]
+
+		position_height = position[0]
+		position_width = position[1]
+
+		if(((position_height + 1) in range(gridworld_height)) and ((position_height + 1, position_width) not in self.wall_positions)):
+				move = (position_height + 1, position_width)
+				possible_next_states.append(move)
+
+		if(((position_height - 1) in range(gridworld_height)) and ((position_height - 1, position_width) not in self.wall_positions)):
+				move = (position_height - 1, position_width)
+				possible_next_states.append(move)
+
+		if(((position_width + 1) in range(gridworld_width)) and ((position_height, position_width + 1) not in self.wall_positions)):
+				move = (position_height, position_width + 1)
+				possible_next_states.append(move)
+				#possible_next_states = np.append(possible_next_states, self.gridworld[position[0]][position[1] + 1])
+		
+		if(((position_width - 1) in range(gridworld_width)) and ((position_height, position_width - 1) not in self.wall_positions)):
+				move = (position_height, position_width - 1)
+				possible_next_states.append(move)
 				
-				#poss_moves = np.append(poss_moves, self.gridworld[position[0]][position[1] - 1])
+				#possible_next_states = np.append(possible_next_states, self.gridworld[position[0]][position[1] - 1])
 			
 
-		return poss_moves
+		return possible_next_states
 
-	def survey_world(self, position):
-		if(position in self.reward_positions):
-			return self.reward_positions[position]
-		else:
-			return self.action_penalty
+	def survey_world(self, position, next_position):
+		original_agent_position = self.agent_position
+
+		self.set_agent_position(position)
+		reward = self.agent_move(next_position)
+		self.undo_last_move()
+
+		self.set_agent_position(original_agent_position)
+
+		return reward
 
 	def agent_move(self, new_agent_position):
 		if(self.game_over):
-			print("Print, Illegal move, the game is over already! \n")
+			print("Illegal move, the game is over already! \n")
 			return None
-		if(new_agent_position in self.get_possible_moves(self.agent_position)):
+		if(self.agent_position == new_agent_position):
+			return self.action_penalty
+		
+		if(new_agent_position in self.get_possible_next_states(self.agent_position)):
 			self.agent_prev_position = self.agent_position
 			self.agent_position = new_agent_position
 
-			if(game_over()):
+			if(self.check_game_over()):
 				self.game_over = True
 
 			if(self.agent_position in self.reward_positions):
-				return reward_positions[self.agent_position]
+				return self.reward_positions[self.agent_position]
 			else:
 				return self.action_penalty
 		else:
@@ -95,6 +130,8 @@ class Gridworld:
 	
 	def undo_last_move(self):
 		self.agent_position = self.agent_prev_position
+		if(self.game_over):
+			self.game_over = False
 
 
 	def is_terminal(self, position):
@@ -103,8 +140,8 @@ class Gridworld:
 		else:
 			return False
 
-	def game_over(self):
-		if(is_terminal(self.agent_position)):
+	def check_game_over(self):
+		if(self.is_terminal(self.agent_position)):
 			return True
 		else:
 			return False
@@ -127,12 +164,12 @@ if __name__ == '__main__':
 	x.set_reward_state((1,3), -1)
 	x.print_gridworld()
 
-	agent_possible_moves = x.get_possible_moves(x.agent_position)
+	agent_possible_moves = x.get_possible_next_states(x.agent_position)
 	print("Here are the agents possible moves from state {} : {} \n".format(x.agent_position, agent_possible_moves))
 	next_agent_pos = rn.choice(agent_possible_moves)
 	print("Agent then moves to {} \n".format(next_agent_pos))
 	x.agent_move(next_agent_pos)
 	x.print_gridworld()
-	agent_possible_moves = x.get_possible_moves(x.agent_position)
+	agent_possible_moves = x.get_possible_next_states(x.agent_position)
 	print("Here are the agents possible moves from state {} : {} \n".format(x.agent_position, agent_possible_moves))
 
