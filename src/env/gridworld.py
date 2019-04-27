@@ -196,7 +196,7 @@ class Gridworld:
 			print("Illegal move, the game is over already! \n")
 			return None
 		if(self.agent_position == new_agent_position):
-			return self.action_penalty
+			return self.agent_position, self.action_penalty
 
 		if(new_agent_position in self.get_possible_next_states(self.agent_position)):
 			
@@ -210,9 +210,9 @@ class Gridworld:
 				self.game_over = True
 
 			if(self.agent_position in self.reward_positions):
-				return self.reward_positions[self.agent_position]
+				return self.agent_position, self.reward_positions[self.agent_position]
 			else:
-				return self.action_penalty
+				return self.agent_position, self.action_penalty
 		else:
 			print('Illegal move.')
 			return None
