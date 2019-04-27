@@ -7,7 +7,7 @@ class Gridworld_Agent:
 	def __init__(self, 
 					method = 'value_iteration', 
 					learning_rate = 0.1, 
-					discount_factor = 0.9,
+					discount_factor = 1,
 					delta_treshold = 0.002):
 
 		self.VF = {}
@@ -33,50 +33,93 @@ class Gridworld_Agent:
 		for state in all_states:
 			self.VF[state] = 0
 
-	def value_iteration(self, env, policy_choice = None):
-
+	def value_iteration(self, env):
 		all_states = env.get_all_non_wall_states()
+
 		self.init_VF_zeros(env)
 
-		if((policy_choice == "inherent") and (self.policy)):
-			chosen_policy = self.policy
 
-		else:
-			chosen_policy = {}
-			self.set_policy_deterministic_greedy(env)
+		while(True):
 
-
-		done = False
-
-		while(not done):
-			delta = 0
+			highest_delta = 0
 
 			for state in all_states:
-				env.set_agent_position(state)
+				
+				possible_next_states = env.get_possible_next_states(state)
+				
+				best_next_state_value = 0
+				
 
-				if(chosen_policy):
-					next_move = chosen_policy[state]
-				else:
-					next_move = self.get_greedy_next_state(env, state)
+				for intended_next_state in possible_next_states:
+					state_transition_probabilities = env.get_action_probabilities(state, intended_next_state, possible_next_states)
+					intended_next_state_value = 0
 
-				reward = env.agent_move(next_move)
-				env.undo_last_move()
+					for resulting_next_state in state_transition_probabilities:
+						intended_next_state_value += state_transition_probabilities[resulting_next_state]*(env.survey_world(state, resulting_next_state) + self.discount_factor * self.VF[resulting_next_state])
+					
+					if(best_next_state_value <= intended_next_state_value):
+						best_next_state_value = intended_next_state_value
 
-				new_state_value = reward + self.discount_factor * self.VF[next_move]
-				new_delta = new_state_value - self.VF[state]
+				if(highest_delta < abs(best_next_state_value - self.VF[state])):
+					highest_delta = abs(best_next_state_value - self.VF[state])
 
-				self.update_value_function(state, new_state_value)
+				self.update_value_function(state, best_next_state_value)
 
-				if(delta < new_delta):
-					delta = new_delta
-
-			if(delta < self.delta_treshold):
-				done = True
-
+			if(highest_delta < self.delta_treshold):
+				break
 
 		self.print_value_function(env)
-		
+
 		return self.VF
+
+
+
+
+	# def value_iteration(self, env, policy_choice = None):
+
+	# 	all_states = env.get_all_non_wall_states()
+	# 	self.init_VF_zeros(env)
+
+	# 	if((policy_choice == "inherent") and (self.policy)):
+	# 		chosen_policy = self.policy
+
+	# 	else:
+	# 		chosen_policy = {}
+	# 		self.set_policy_deterministic_greedy(env)
+	# 		print(self.policy)
+
+
+	# 	done = False
+
+	# 	while(not done):
+	# 		delta = 0
+
+	# 		for state in all_states:
+	# 			env.set_agent_position(state)
+
+	# 			if(chosen_policy):
+	# 				next_move = chosen_policy[state]
+	# 			else:
+	# 				next_move = self.get_greedy_next_state(env, state)
+
+	# 			reward = env.agent_move(next_move)
+	# 			env.undo_last_move()
+
+	# 			new_state_value = reward + self.discount_factor * self.VF[next_move]
+	# 			new_delta = new_state_value - self.VF[state]
+
+	# 			self.update_value_function(state, new_state_value)
+
+	# 			if(delta < new_delta):
+	# 				delta = new_delta
+
+	# 		if(delta < self.delta_treshold):
+	# 			done = True
+
+
+	# 	self.print_value_function(env)
+		
+	# 	return self.VF
 
 	def policy_iteration(self, env):
 		
@@ -90,8 +133,8 @@ class Gridworld_Agent:
 			previous_VF = self.VF
 			previous_policy = policy
 
-			new_VF = self.value_iteration(env, policy)
-
+			#new_VF = self.value_iteration(env, policy)
+			new_VF = self.value_iteration(env)
 			policy = self.set_policy_deterministic_greedy(env)
 
 
@@ -117,7 +160,7 @@ class Gridworld_Agent:
 			return state
 
 		for next_state in possible_next_states:
-			state_values.append(env.survey_world(state, next_state) + self.discount_factor * self.VF[next_state])
+			state_values.append(env.survey_world(state, next_state) + self.VF[next_state])
 			states.append(next_state)
 
 		largest_value_index = np.argmax(state_values)
@@ -247,4 +290,16 @@ class Gridworld_Agent:
 
 
 if __name__ == '__main__':
-	print("We live in a binary reality")	
+	from env.gridworld import Gridworld
+	env = Gridworld(deterministic = False)
+	#env = Gridworld(5, 5, (4,0), {(0,3):1, (0,4):-1, (0,0):1}, [(1,1), (1,2)], [(0,3), (0,4), (0,0)])
+	#env = Gridworld(10, 10, (5,5), {(0,0):1, (9,0):1, (0,9):1, (9,9):1, (0,4):-1, (4,0):-1, (4,9):-1, (9,4):-1}, [(1,1), (8,8), (1,8), (8,1)], [(0,0), (9,0), (0,9), (9,9), (0,4), (4,0), (4,9), (9,4)])
+	agent = Gridworld_Agent()
+
+	#VF = agent.value_iteration(env)
+
+	#agent.print_value_function(env)
+	#agent.set_policy_deterministic_greedy(env)
+	#agent.print_policy(env, agent.policy)
+
+	VF = agent.policy_iteration(env)
