@@ -2,7 +2,7 @@ import numpy as np
 import random
 
 from env.bandit import Bandit
-from custom_lib.magicHat import update_sample_mean
+from custom_lib.magic_hat import update_sample_mean
 
 
 class BanditPlayer:

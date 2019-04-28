@@ -1,13 +1,14 @@
 import numpy as np
 import random
 
+from env.gridworld import Gridworld
+from custom_lib.magic_hat import update_sample_mean
 
 class Gridworld_Agent:
 
 	def __init__(self, 
-					method = 'value_iteration', 
 					learning_rate = 0.1, 
-					discount_factor = 1,
+					discount_factor = 0.9,
 					delta_treshold = 0.002):
 
 		self.VF = {}
@@ -73,54 +74,6 @@ class Gridworld_Agent:
 		return self.VF
 
 
-
-
-	# def value_iteration(self, env, policy_choice = None):
-
-	# 	all_states = env.get_all_non_wall_states()
-	# 	self.init_VF_zeros(env)
-
-	# 	if((policy_choice == "inherent") and (self.policy)):
-	# 		chosen_policy = self.policy
-
-	# 	else:
-	# 		chosen_policy = {}
-	# 		self.set_policy_deterministic_greedy(env)
-	# 		print(self.policy)
-
-
-	# 	done = False
-
-	# 	while(not done):
-	# 		delta = 0
-
-	# 		for state in all_states:
-	# 			env.set_agent_position(state)
-
-	# 			if(chosen_policy):
-	# 				next_move = chosen_policy[state]
-	# 			else:
-	# 				next_move = self.get_greedy_next_state(env, state)
-
-	# 			reward = env.agent_move(next_move)
-	# 			env.undo_last_move()
-
-	# 			new_state_value = reward + self.discount_factor * self.VF[next_move]
-	# 			new_delta = new_state_value - self.VF[state]
-
-	# 			self.update_value_function(state, new_state_value)
-
-	# 			if(delta < new_delta):
-	# 				delta = new_delta
-
-	# 		if(delta < self.delta_treshold):
-	# 			done = True
-
-
-	# 	self.print_value_function(env)
-		
-	# 	return self.VF
-
 	def policy_iteration(self, env):
 		
 		self.init_VF_zeros(env)
@@ -141,6 +94,7 @@ class Gridworld_Agent:
 
 		self.print_value_function(env)
 		self.print_policy(env, policy)
+		
 		return self.VF, policy
 
 		#1.init VF and policy randomly
@@ -191,6 +145,59 @@ class Gridworld_Agent:
 		self.policy = policy
 
 		return policy
+
+
+	def play_game(self, env, policy):
+
+		list_of_states = []
+		list_of_rewards = []
+		list_of_states.append(env.get_agent_position())
+		list_of_rewards.append(0)
+
+		while(not env.game_over):
+			new_state, reward = env.agent_move(policy[env.get_agent_position()])
+			list_of_states.append(new_state)
+			list_of_rewards.append(reward)
+			
+		return list_of_states, list_of_rewards
+
+	def monte_carlo_approximation(self, number_of_episodes, env = None):
+
+		if(env):
+			parameters = env.get_all_parameters()
+
+		else:
+			env = Gridworld()
+			parameters = None
+
+		VF_value_iterated, policy = self.policy_iteration(env)
+		print("This is the policy from the policy iteration")
+		print(policy)
+
+		for i in range(number_of_episodes):
+
+			if parameters:
+				env = Gridworld(parameters["height_width"], 
+								parameters["agent_position"],
+								parameters["reward_positions"],
+								parameters["wall_positions"],
+								parameters["terminal_positions"],
+								parameters["action_penalty"],
+								parameters["deterministic"],
+								parameters["randomness_probability"])
+			else:
+				env = Gridworld()
+
+
+			list_of_states, list_of_rewards = self.play_game(env, policy)	
+			print("Result of the episode: ")
+			print(list_of_states)
+			print(list_of_rewards)
+
+			update_sample_mean(10,10,10)
+
+			del env
+			
 
 
 	@staticmethod
@@ -290,16 +297,28 @@ class Gridworld_Agent:
 
 
 if __name__ == '__main__':
-	from env.gridworld import Gridworld
+	print("This agent is made for the Gridworld environment. It has multiple methods implemented, namely: Value Iteration, Policy Iteration and Monte Carlo Approximation.")
+	print("These methods can be demonstrated seperately from their respectively named demo files.")
+	print("The following is the demo of all the above mentioned methods, running on the standard stochastic Gridworld-problem.")
+	
+	print("Value Iteration:")
 	env = Gridworld(deterministic = False)
+	agent = Gridworld_Agent()
+	agent.value_iteration(env)
+
+	print("Policy Iteration:")
+	env = Gridworld(deterministic = False)
+	agent = Gridworld_Agent()
+	agent.policy_iteration(env)
+
+	print("Monte-Carlo Approximation:")
+	env = Gridworld(deterministic = False)
+	agent = Gridworld_Agent()
+	agent.monte_carlo_approximation(1, env)
 	#env = Gridworld(5, 5, (4,0), {(0,3):1, (0,4):-1, (0,0):1}, [(1,1), (1,2)], [(0,3), (0,4), (0,0)])
 	#env = Gridworld(10, 10, (5,5), {(0,0):1, (9,0):1, (0,9):1, (9,9):1, (0,4):-1, (4,0):-1, (4,9):-1, (9,4):-1}, [(1,1), (8,8), (1,8), (8,1)], [(0,0), (9,0), (0,9), (9,9), (0,4), (4,0), (4,9), (9,4)])
-	agent = Gridworld_Agent()
-
 	#VF = agent.value_iteration(env)
 
 	#agent.print_value_function(env)
 	#agent.set_policy_deterministic_greedy(env)
 	#agent.print_policy(env, agent.policy)
-
-	VF = agent.policy_iteration(env)

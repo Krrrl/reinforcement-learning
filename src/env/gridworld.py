@@ -7,19 +7,17 @@ class Gridworld:
 
 
 	def __init__(self, 
-					height = 3, 
-					width = 4, 
+					height_width = (3, 4), 
 					agent_start_pos = (2, 0), 
 					rewards = {(0,3):1, (1,3):-1}, 
 					walls = [(1,1)],
 					terminals = [(0,3), (1,3)], 
 					action_penalty = 0,
-					#windy = False,
 					deterministic = True,
 					randomness_probability = 0.5
 				):
 
-		self.gridworld = np.zeros((height, width))
+		self.gridworld = np.zeros(height_width)
 		self.agent_position = agent_start_pos
 		self.agent_prev_position = agent_start_pos
 		self.reward_positions = rewards
@@ -30,57 +28,11 @@ class Gridworld:
 		
 		self.deterministic = deterministic
 		self.randomness_probability = randomness_probability
-	# 	self.windy = windy
-	# 	self.randomizer_table = np.zeros((2*self.gridworld.ndim))
-	# 	self.transition_matrix = np.zeros((height*width, width*height))
-	# 	self.state_wrapper = {}
-	# 	self.index_wrapper = {}
-	# 	self.init_wrappers()
-	# 	self.init_transition_matrix()
 
-	# def init_wrappers(self):
-	# 	all_possible_states = self.get_all_non_wall_states()
-		
-	# 	for i in range(len(all_possible_states)):
-	# 		self.state_wrapper[all_possible_states[i]] = i
-	# 		self.index_wrapper[i] = all_possible_states[i]
-
-
-	# def init_transition_matrix(self):
-	# 	all_possible_states = self.get_all_non_wall_states()
-
-	# 	for state in all_possible_states:
-	# 		possible_next_states = self.get_possible_next_states(state)
-
-	# 		for next_state in possible_next_states:
-
-	# 			if self.windy:
-	# 				if((state[0] - 1) == next_state[0]):
-	# 					probability = 0.5
-
-	# 				elif(state == next_state):
-	# 					probability = 1.0
-					
-	# 				else:
-	# 					probability = 0.5/3
-	# 				self.set_transition_probability(self.state_wrapper[state], self.state_wrapper[next_state], probability)
-				
-	# 			else:
-	# 				self.set_transition_probability(self.state_wrapper[state], self.state_wrapper[next_state], 1.0)
-	# def set_transition_probability(self, state, next_state, probability):
-	# 	self.transition_matrix[state][next_state] = probability
-
-	# def get_transition_probabilities(self, state):
-	# 	transitional_dict = {}
-	# 	dimensions = self.transition_matrix.shape
-	# 	for i in range(dimensions[0]):
-	# 		if(self.transition_matrix[self.state_wrapper[state]][i] != 0.):
-	# 			transitional_dict[self.index_wrapper[i]] = self.transition_matrix[self.state_wrapper[state]][i]
-	# 	return transitional_dict
 
 	def action_randomizer(self, state, intended_next_state):
 
-		if(rn.random() < self.randomness_probability):
+		if(rn.random() > self.randomness_probability):
 			return intended_next_state
 		
 		possible_next_states = self.get_possible_next_states(state)
@@ -95,18 +47,19 @@ class Gridworld:
 			probabilities = {intended_next_state : 0}
 			return probabilities 
 
+		if(self.deterministic):
+			probabilities = {intended_next_state : 1}
+			return probabilities
+
 		probabilities = {}
 
-		chance_randomness = self.randomness_probability
-
-		probabilities[intended_next_state] = 1 - chance_randomness
+		probabilities[intended_next_state] = 1 - self.randomness_probability
 		possible_next_states.remove(intended_next_state)
 
 		for state in possible_next_states:
-			probabilities[state] = chance_randomness/len(possible_next_states)
+			probabilities[state] = self.randomness_probability/len(possible_next_states)
 
 		return probabilities
-
 
 
 	def set_reward_state(self, position, reward):
@@ -123,7 +76,22 @@ class Gridworld:
 	def set_agent_position(self, position):
 		self.agent_position = position
 
-	def get_agent_pos(self):
+	def get_all_parameters(self):
+		parameters = {}
+
+		parameters["height_width"] = self.get_world_dim()
+		parameters["agent_position"] = self.agent_position
+		parameters["reward_positions"] = self.reward_positions
+		parameters["wall_positions"] = self.wall_positions
+		parameters["terminal_positions"] = self.terminal_positions
+		parameters["action_penalty"] = self.action_penalty
+		parameters["deterministic"] = self.deterministic
+		parameters["randomness_probability"] = self.randomness_probability
+
+		return parameters
+
+
+	def get_agent_position(self):
 		return self.agent_position
 
 	def get_world_dim(self):
@@ -181,15 +149,6 @@ class Gridworld:
 
 	def survey_world(self, position, next_position):
 		return self.reward_positions.get(next_position, self.action_penalty)
-		# original_agent_position = self.agent_position
-
-		# self.set_agent_position(position)
-		# reward = self.agent_move(next_position)
-		# self.undo_last_move()
-
-		# self.set_agent_position(original_agent_position)
-
-		# return reward
 
 	def agent_move(self, new_agent_position):
 		if(self.game_over):
